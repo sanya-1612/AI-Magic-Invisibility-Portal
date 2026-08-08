@@ -227,15 +227,11 @@ while True:
 
     # ---------------- Controls ----------------
     cv2.putText(
-        frame,
-        "Move Index | Thumb=Size | B = Capture | C = Shape | F = Fitscreen | Q = Quit|"
-        " Gestures Enabled",
-        (20, 100),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.55,
-        (200, 200, 200),
-        1,
-        cv2.LINE_AA
+    frame, "Move: Index | Size: Thumb | B=Capture | C=Shape | V=Color | F=Fitscreen | Q=Quit",
+    (20, 100),
+    cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+    (200, 200, 200), 1,
+    cv2.LINE_AA
     )
 
     # ---------------- Gesture Feedback ----------------
@@ -292,6 +288,11 @@ while True:
         
     if key == ord("c"):
         portal.next_shape()
+
+    #------------- Change Color -----------------------------
+        
+    if key == ord("v"):
+        portal.next_color()
 
     # ---------------- Re-Capture Background ----------------
     if key == ord("b"):
