@@ -129,11 +129,12 @@ GitHub: https://github.com/sanya-1612
 - **Thumb** (distance from index finger) — Adjust portal size
 
 ### Keyboard Shortcuts
-
 | Key | Action |
-|-----|--------|
-| `B` | Capture/Refresh Background |
-| `Q` | Quit Application |
+| --- | --- |
+| B | Capture/Refresh Background |
+| C | Change Portal Shape |
+| F | Toggle Fullscreen |
+| Q | Quit Application |
 
 ### Gesture Controls
 
