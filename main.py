@@ -87,6 +87,8 @@ WINDOW_NAME = "AI Magic Invisibility Portal"
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 cv2.resizeWindow(WINDOW_NAME, SCREEN_W, SCREEN_H)
 
+# FIX: Initialize fullscreen state outside the loop so it doesn't reset every frame
+fullscreen = False
 
 while True:
 
@@ -271,10 +273,10 @@ while True:
     cv2.imshow("AI Magic Invisibility Portal", display_frame)
 
 
-    fullscreen = False
+    # FIX: Use elif statements for all key checks to avoid execution overlap
     key = cv2.waitKey(1) & 0xFF
+    
     # ---------------- Toggle Fullscreen ----------------
-
     if key == ord("f"):
 
         fullscreen = not fullscreen
@@ -285,17 +287,15 @@ while True:
             cv2.resizeWindow(WINDOW_NAME, 1000, 700)
 
     #------------- Change Shape -----------------------------
-        
-    if key == ord("c"):
+    elif key == ord("c"):
         portal.next_shape()
 
     #------------- Change Color -----------------------------
-        
-    if key == ord("v"):
+    elif key == ord("v"):
         portal.next_color()
 
     # ---------------- Re-Capture Background ----------------
-    if key == ord("b"):
+    elif key == ord("b"):
 
         print("Stand away from camera...")
         time.sleep(2)
@@ -307,7 +307,7 @@ while True:
             print("Background Updated Successfully!")
 
     # ---------------- Quit ----------------
-    if key == ord("q"):
+    elif key == ord("q"):
         break
 
 cap.release()
