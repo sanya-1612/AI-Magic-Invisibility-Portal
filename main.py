@@ -1,6 +1,5 @@
 import cv2
 import mediapipe as mp
-import time
 
 from portal import Portal
 
@@ -22,21 +21,10 @@ hands = mp_hands.Hands(
 
 mp_draw = mp.solutions.drawing_utils
 
-# ---------------- Background Capture ----------------
-print("Stand away from camera...")
-
-for i in range(3, 0, -1):
-    print(i)
-    time.sleep(1)
-
-ret, background = cap.read()
-
-if not ret:
-    print("Failed to capture background.")
-    cap.release()
-    exit()
-
-background = cv2.flip(background, 1)
+# ---------------- Dynamic Background Estimation ----------------
+print("Initializing dynamic background model...")
+bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=16, detectShadows=False)
+background = None
 
 # ---------------- Portal ----------------
 portal = Portal(radius=120)
@@ -50,8 +38,17 @@ while True:
 
     frame = cv2.flip(frame, 1)
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # ---------------- Update Background Model ----------------
+    bg_subtractor.apply(frame, learningRate=0.005)
+    bg_model_frame = bg_subtractor.getBackgroundImage()
+    
+    if bg_model_frame is not None:
+        background = bg_model_frame
+    else:
+        background = frame.copy()
 
+    # ---------------- Hand Tracking ----------------
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb)
 
     h, w = frame.shape[:2]
@@ -115,7 +112,7 @@ while True:
     # ---------------- Controls ----------------
     cv2.putText(
         frame,
-        "Move Index Finger | Thumb = Portal Size | Press B = Capture Background",
+        "Move Index Finger | Thumb = Portal Size | Q = Quit",
         (20, 100),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.55,
@@ -139,18 +136,6 @@ while True:
     cv2.imshow("AI Magic Invisibility Portal", frame)
 
     key = cv2.waitKey(1) & 0xFF
-
-    # ---------------- Re-Capture Background ----------------
-    if key == ord("b"):
-
-        print("Stand away from camera...")
-        time.sleep(2)
-
-        ret, bg = cap.read()
-
-        if ret:
-            background = cv2.flip(bg, 1)
-            print("Background Updated Successfully!")
 
     # ---------------- Quit ----------------
     if key == ord("q"):
