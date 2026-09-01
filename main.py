@@ -1,11 +1,87 @@
 import cv2
 import mediapipe as mp
 import time
+import threading
+import queue
 
 from gesture_recognizer import detect_gesture
 from portal import Portal
 
 import tkinter as tk
+
+class VideoCaptureWorker:
+    def __init__(self, src=0):
+        self.cap = cv2.VideoCapture(src)
+        self.q = queue.Queue(maxsize=1)
+        self.running = True
+        if not self.cap.isOpened():
+            self.running = False
+        else:
+            self.thread = threading.Thread(target=self._read_loop, daemon=True)
+            self.thread.start()
+
+    def isOpened(self):
+        return self.cap.isOpened()
+
+    def _read_loop(self):
+        while self.running:
+            ret, frame = self.cap.read()
+            if not ret:
+                continue
+            frame = cv2.flip(frame, 1)
+            if self.q.full():
+                try:
+                    self.q.get_nowait()
+                except queue.Empty:
+                    pass
+            self.q.put(frame)
+
+    def read(self):
+        try:
+            return True, self.q.get(timeout=0.1)
+        except queue.Empty:
+            return False, None
+
+    def release(self):
+        self.running = False
+        if hasattr(self, 'thread'):
+            self.thread.join(timeout=1.0)
+        self.cap.release()
+
+class InferenceWorker:
+    def __init__(self):
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            max_num_hands=1,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.7
+        )
+        self.input_q = queue.Queue(maxsize=1)
+        self.output_q = queue.Queue(maxsize=1)
+        self.running = True
+        self.thread = threading.Thread(target=self._process_loop, daemon=True)
+        self.thread.start()
+
+    def _process_loop(self):
+        while self.running:
+            try:
+                frame = self.input_q.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = self.hands.process(rgb)
+            
+            if self.output_q.full():
+                try:
+                    self.output_q.get_nowait()
+                except queue.Empty:
+                    pass
+            self.output_q.put(results)
+
+    def stop(self):
+        self.running = False
+        self.thread.join(timeout=1.0)
 
 # ---------------- Screen Utilities ----------------
 def resize_to_screen(frame, screen_w, screen_h):
@@ -22,7 +98,7 @@ def resize_to_screen(frame, screen_w, screen_h):
     return cv2.resize(frame, (new_w, new_h))
 
 # ---------------- Camera ----------------
-cap = cv2.VideoCapture(0)
+cap = VideoCaptureWorker(0)
 
 # ---------------- Screen Size ----------------
 root = tk.Tk()
@@ -39,14 +115,10 @@ if not cap.isOpened():
 
 # ---------------- MediaPipe ----------------
 mp_hands = mp.solutions.hands
-
-hands = mp_hands.Hands(
-    max_num_hands=1,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-)
-
 mp_draw = mp.solutions.drawing_utils
+
+inference = InferenceWorker()
+latest_results = None
 
 # ---------------- Background Capture ----------------
 print("Stand away from camera...")
@@ -56,13 +128,9 @@ for i in range(3, 0, -1):
     time.sleep(1)
 
 ret, background = cap.read()
-
-if not ret:
-    print("Failed to capture background.")
-    cap.release()
-    exit()
-
-background = cv2.flip(background, 1)
+while not ret or background is None:
+    time.sleep(0.1)
+    ret, background = cap.read()
 
 # ---------------- Portal ----------------
 portal = Portal(radius=120)
@@ -92,18 +160,22 @@ while True:
 
     ret, frame = cap.read()
 
-    if not ret:
-        break
-
-    frame = cv2.flip(frame, 1)
-
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    results = hands.process(rgb)
+    if not ret or frame is None:
+        continue
 
     h, w = frame.shape[:2]
 
-    if results.multi_hand_landmarks:
+    if not inference.input_q.full():
+        inference.input_q.put(frame)
+
+    try:
+        latest_results = inference.output_q.get_nowait()
+    except queue.Empty:
+        pass
+
+    results = latest_results
+
+    if results and results.multi_hand_landmarks:
 
         hand = results.multi_hand_landmarks[0]
 
@@ -157,8 +229,8 @@ while True:
 
                 ret, bg = cap.read()
 
-                if ret:
-                    background = cv2.flip(bg, 1)
+                if ret and bg is not None:
+                    background = bg
                     print("Background Updated Successfully!")
                     gesture_message = "Gesture: OK Sign\nAction: Background Captured"
                     gesture_message_timer = 60
@@ -301,8 +373,8 @@ while True:
 
         ret, bg = cap.read()
 
-        if ret:
-            background = cv2.flip(bg, 1)
+        if ret and bg is not None:
+            background = bg
             print("Background Updated Successfully!")
 
     # ---------------- Quit ----------------
@@ -310,4 +382,5 @@ while True:
         break
 
 cap.release()
+inference.stop()
 cv2.destroyAllWindows()
