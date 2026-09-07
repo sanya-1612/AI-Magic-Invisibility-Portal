@@ -6,20 +6,31 @@ class Portal:
 
     #updated Constructor
     def __init__(self, radius=120):
-
+        def __init__(self, radius=120):
         self.x = 320
         self.y = 240
         self.radius = radius
-
         # Available portal shapes
-        self.shapes = [
-            "circle",
-            "square",
-            "hexagon",
-            "heart",
-        ]
-
+        self.shapes = ["circle", "square", "hexagon", "heart"]
         self.current_shape = 0
+        
+        # NEW: Color Themes (Border BGR, Glow BGR)
+        self.themes = [
+            {"border": (0, 255, 255), "glow": (255, 180, 0)},   # Default Yellow/Orange
+            {"border": (255, 0, 255), "glow": (255, 0, 255)},   # Magenta
+            {"border": (0, 255, 0), "glow": (0, 255, 0)},       # Green
+            {"border": (255, 0, 0), "glow": (255, 0, 0)}        # Blue
+        ]
+        self.current_theme = 0
+
+    def next_color(self):
+        """Switch to the next portal color theme."""
+        self.current_theme = (self.current_theme + 1) % len(self.themes)
+        
+    def get_theme(self):
+        return self.themes[self.current_theme]
+
+        
 
     # -------------------------
     # Smooth Position Update

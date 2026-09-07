@@ -87,6 +87,8 @@ WINDOW_NAME = "AI Magic Invisibility Portal"
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 cv2.resizeWindow(WINDOW_NAME, SCREEN_W, SCREEN_H)
 
+# FIX: Initialize fullscreen state outside the loop so it doesn't reset every frame
+fullscreen = False
 
 while True:
 
@@ -227,15 +229,11 @@ while True:
 
     # ---------------- Controls ----------------
     cv2.putText(
-        frame,
-        "Move Index | Thumb=Size | B = Capture | C = Shape | F = Fitscreen | Q = Quit|"
-        " Gestures Enabled",
-        (20, 100),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.55,
-        (200, 200, 200),
-        1,
-        cv2.LINE_AA
+    frame, "Move: Index | Size: Thumb | B=Capture | C=Shape | V=Color | F=Fitscreen | Q=Quit",
+    (20, 100),
+    cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+    (200, 200, 200), 1,
+    cv2.LINE_AA
     )
 
     # ---------------- Gesture Feedback ----------------
@@ -275,10 +273,10 @@ while True:
     cv2.imshow("AI Magic Invisibility Portal", display_frame)
 
 
-    fullscreen = False
+    # FIX: Use elif statements for all key checks to avoid execution overlap
     key = cv2.waitKey(1) & 0xFF
+    
     # ---------------- Toggle Fullscreen ----------------
-
     if key == ord("f"):
 
         fullscreen = not fullscreen
@@ -289,12 +287,15 @@ while True:
             cv2.resizeWindow(WINDOW_NAME, 1000, 700)
 
     #------------- Change Shape -----------------------------
-        
-    if key == ord("c"):
+    elif key == ord("c"):
         portal.next_shape()
 
+    #------------- Change Color -----------------------------
+    elif key == ord("v"):
+        portal.next_color()
+
     # ---------------- Re-Capture Background ----------------
-    if key == ord("b"):
+    elif key == ord("b"):
 
         print("Stand away from camera...")
         time.sleep(2)
@@ -306,7 +307,7 @@ while True:
             print("Background Updated Successfully!")
 
     # ---------------- Quit ----------------
-    if key == ord("q"):
+    elif key == ord("q"):
         break
 
 cap.release()
